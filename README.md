@@ -1,0 +1,2 @@
+# algofun
+Fun with algorithms
