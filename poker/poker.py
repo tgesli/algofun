@@ -345,4 +345,4 @@ def runFileTest(fname):
 if __name__ == '__main__':
     # runTests()
     # runPerfTest7()
-    runFileTest('/home/tgesli/src/algofun/poker/data/poker-hand-training.csv')
+    runFileTest('data/poker-hand-training.csv')
