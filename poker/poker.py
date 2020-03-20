@@ -9,14 +9,11 @@ import time
 
 
 class pokerDeck:
-    ranks=['2','3','4','5','6','7','8','9','10', 'J', 'Q', 'K', 'A']
-    # suits=['♠', '♥', '♣', '♦']
-    suits=['s', 'h', 'c', 'd']
-    offsets = { "SF": 1300000, "QU": 1200000, "FH": 1100000, "FL": 1000000,
-                "S8" : 900000, "TR": 800000,  "2P": 700000,  "PR": 600000,
-                "HC" : 0 }    
+    ranks = ['2','3','4','5','6','7','8','9','10', 'J', 'Q', 'K', 'A']
+    suits = ['s', 'h', 'c', 'd']  # ['♠', '♥', '♣', '♦']
+    handTypes = ['HC', 'PR', '2P', 'TR', 'S8', 'FL', 'FH', 'QU', 'SF']
+    
     rank_values = { } 
-    # suit_values = { } 
     
     def __init__(self):
         self.deck = list(product(self.ranks, self.suits))
@@ -117,13 +114,15 @@ class pokerDeck:
                     if handRanks[2] == handRanks[3]:
                         htype = "2P"
 
-                seen = []
-                for r in handRanks:
-                    if r not in seen:
-                        score = 14*score + r
-                        seen.append(r)
+            seen = []
+            for r in handRanks:
+                if r not in seen:
+                    score = 14*score + r
+                    seen.append(r)
  
-        return handRanks, htype, score + self.offsets[htype]
+        score += self.handTypes.index(htype) * 1000000 
+        
+        return handRanks, htype, score 
         
 
 def sortPairs(hr):
@@ -304,4 +303,5 @@ def runPerfTest7():
 
         
 if __name__ == '__main__':
-    runTests()
+    # runTests()
+    runPerfTest7()
