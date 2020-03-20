@@ -6,6 +6,7 @@ from random import shuffle
 from random import sample
 
 import time
+import csv
 
 
 class pokerDeck:
@@ -13,7 +14,7 @@ class pokerDeck:
     suits = ['s', 'h', 'c', 'd']  # ['♠', '♥', '♣', '♦']
     handTypes = ['HC', 'PR', '2P', 'TR', 'S8', 'FL', 'FH', 'QU', 'SF']
     
-    rank_values = { } 
+    rank_values = { }
     
     def __init__(self):
         self.deck = list(product(self.ranks, self.suits))
@@ -80,7 +81,7 @@ class pokerDeck:
         score = 0
         
         handRanks = sorted([self.rank_values[card[0]] for card in hand], reverse=True)
-        flush = len(set([card[1] for card in hand])) == 1  
+        flush = len(set([card[1] for card in hand])) == 1
         paired = len(set(handRanks))  < 5
         
         if paired:
@@ -120,9 +121,9 @@ class pokerDeck:
                     score = 14*score + r
                     seen.append(r)
  
-        score += self.handTypes.index(htype) * 1000000 
+        score += self.handTypes.index(htype) * 1000000
         
-        return handRanks, htype, score 
+        return handRanks, htype, score
         
 
 def sortPairs(hr):
@@ -152,7 +153,7 @@ def showCards(cardlist, title):
     print(str)
 
         
-def main():               
+def main():
     nplayers = 9
     deck = pokerDeck()
 
@@ -175,14 +176,14 @@ def main():
 
 
 """
-          Lowest         Highest 
+          Lowest         Highest
 HC:      283,460         576,011
 PR:      606,527         641,143
 2P:      700,620         702,938
 TR:      800,451         802,938
 S8:      900,005         900,014
 FL:    1,000,007       1,000,014
-FH:    1,100,031       1,100,209  
+FH:    1,100,031       1,100,209
 QU:    1,200,031       1,200,209
 SF:    1,300,005       1,300,014
 
@@ -239,7 +240,7 @@ def runPerfTest():
 
     # stats
     d = { "SF": 0, "QU": 0, "FH": 0, "FL": 0, "S8" : 0, "TR": 0,
-          "2P": 0,  "PR": 0, "HC" : 0 } 
+          "2P": 0,  "PR": 0, "HC" : 0 }
     for ht in [res[3] for res in memo]:
         d[ht] += 1
 
@@ -271,7 +272,7 @@ def showStats(stats, total):
 
 def runPerfTest7():
     stats = { "SF": 0, "QU": 0, "FH": 0, "FL": 0, "S8" : 0,
-              "TR": 0, "2P": 0,  "PR": 0, "HC" : 0 } 
+              "TR": 0, "2P": 0,  "PR": 0, "HC" : 0 }
     strt = time.perf_counter()
     # memo = []
     numTests = 100000
@@ -302,6 +303,46 @@ def runPerfTest7():
     print("--------------------------")
 
         
+def runFileTest(fname):
+    
+    ranks   = ['A', '2', '3', '4', '5', '6', '7',
+               '8', '9', '10', 'J', 'Q', 'K']
+    suits   = ['h', 's', 'd', 'c']
+    classes = ['HC', 'PR', '2P', 'TR', 'S8', 'FL', 'FH', 'QU', 'SF', 'SF']
+    
+    deck = pokerDeck()
+             
+    with open(fname) as csvfile:
+        rdr = csv.reader(csvfile, delimiter=' ')
+        cnt = 0
+        passes = 0
+        fails = 0
+        for row in rdr:
+            nums = list(map(int, row[0].split(',')))
+
+            # handstr = ''
+            hand = []
+            for i in range(5):
+                s = suits[nums.pop(0) - 1]
+                r = ranks[nums.pop(0) - 1]
+                # handstr += r + s + ' '
+                hand.append((r,s))
+                
+            hclass = classes[nums[0]]
+            _, htype, _ = deck.handScore5(hand)
+            
+            if htype == hclass:
+                passes += 1
+            else:
+                fails += 1
+                print("------\nHand: {hand}\nExpected: {hclass}\nFound: {htype}".format(**locals()))
+            
+            # print("Hand({handstr} - {hand})  Class({hclass})".format(**locals()))
+
+        print("---------\nTests ended!\nTotal Passes: {passes}\nTotal Fails: {fails}".format(**locals()))
+                
+                
 if __name__ == '__main__':
     # runTests()
-    runPerfTest7()
+    # runPerfTest7()
+    runFileTest('/home/tgesli/src/algofun/poker/data/poker-hand-training.csv')
