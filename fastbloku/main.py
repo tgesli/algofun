@@ -1,7 +1,11 @@
+from datetime import datetime
+
 from board import Board
-from cell import Cell
 from pieces import Piece
 import players
+
+def hor():
+    print("---------------------------")
 
 def main():
 
@@ -11,19 +15,23 @@ def main():
     player = players.BrutePlayer()
     pieces = []
     score = 0
+    start = datetime.now()
 
     while not gameOver:
 
+        hor()
         print("Current score: {}".format(score))
+        hor()
         board.draw()
-        board.resetFresh()
 
         if not pieces:
             pieces = [Piece.getRandomPiece() for _ in range(3)]
 
+        hor()
         for i in range(len(pieces)):
             print("Piece {}:".format(i+1))
-            pieces[i].draw(i)
+            pieces[i].draw()
+            print('')
 
         move = player.getMove(board, pieces)
         if move is None:
@@ -34,6 +42,8 @@ def main():
             pieces.remove(p)
 
     print("Final score = {}".format(score))
+    print("Total moves = {}".format(board.moves))
+    print("Start time: {} \nEnd time: {}".format(start, datetime.now()))
 
 if __name__ == '__main__':
     main()

@@ -1,4 +1,3 @@
-from cell import Cell
 import random
 import numpy as np
 
@@ -35,7 +34,6 @@ class Piece:
         if not str:
             str = random.choice(self.__pieces)
 
-        self.pid = self.__pieces.index(str)
         self.str = str
         rows = str.split('/')
         self.nrows = len(rows)
@@ -45,43 +43,24 @@ class Piece:
         tmp = np.where(tmp=='.', 1, tmp)
         tmp = np.where(tmp==' ', 0, tmp)
         self.bmat = tmp.astype(np.int16).astype(np.bool)
-
-        self.bitmap = []
-        self.cells = []
-        self.grid = []
-        self.points = str.count('.')
-
-        for r in range(self.nrows):
-            row = []
-            bits = 0
-            for c in range(self.ncols):
-                bits <<= 1
-                cell = Cell(r, c, 0, rows[r][c] == '.')
-
-                row.append(cell)
-                bits += 1
-                self.cells.append(cell)
-            self.grid.append(row)
-            self.bitmap.append(bits)
+        self.points = np.count_nonzero(self.bmat)
 
 
     def __repr__(self):
-        return "<Piece pid:{} '{}' bits={} size={},{}>".format(self.pid, self.str, self.bitmap,
-                                                               self.nrows, self.ncols)
+        return "<Piece {}>".format(self.str)
 
     def __str__(self):
-        return "<Piece pid:{} '{}' {} size={},{}>".format(self.pid, self.str, self.bitmap,
-                                                          self.nrows, self.ncols)
+        return "<Piece {}>".format(self.str)
 
     def draw(self, id=None):
         if id is None:
-            filled = '[ ]'
+            filled = '[*]'
         else:
             filled = '[' + str(id) + ']'
 
         for r in range(self.nrows):
             for c in range(self.ncols):
-                print(filled if self.grid[r][c].isFilled() else '   ', end = '')
+                print(filled if self.bmat[r,c] else '   ', end = '')
             print('')
 
 
@@ -93,16 +72,8 @@ class Piece:
         return self.points
 
 
-    def getGrid(self):
-        return self.grid
-
-
-    def getCells(self):
-        return self.cells
-
-
     def getBits(self):
-        return self.bitmap
+        return self.bmat
 
     @staticmethod
     def getPieces():

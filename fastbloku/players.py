@@ -4,6 +4,8 @@ from typing import List, Tuple
 import copy
 import random
 
+from algofun.fastbloku import main
+
 
 class Player:
 
@@ -105,35 +107,39 @@ class BrutePlayer(Player):
     def __init__(self):
         self.moveCount = 0
         self.cachedMoves = []
+        self.maxtries = 300
 
 
-    def getBestMove(self, board:Board, pieces:List[Piece]):
+    def getBestMoves(self, board:Board, pieces:List[Piece]):
         tempboard = copy.deepcopy(board)
         bestmove = []
         moves = []
         hiscore = 0
 
         for piece in pieces:
-            w,h = piece.getSize()
+            h, w = piece.getSize()
+            if len(pieces)>1:
+                self.moveCount = 0
             for row in range(Board.BOARDSIZE - h + 1):
                 for col in range(Board.BOARDSIZE - w + 1):
-                    score = tempboard.makeMove(piece, row, col)
-                    if score > 0:  # legal move
-                        move = (piece, row, col)
-                        newhi = 0
-                        self.moveCount += 1
-                        rempieces = [p for p in pieces if p != piece]  # todo: move up after first for
-                        if rempieces:      # more pieces remain
-                            newhi, moves = self.getBestMove(tempboard, rempieces)
-                        else:   # no more pieces
-                            for p in Piece.getPieces():
-                                newhi += len(tempboard.findRoomForPiece(p))
+                    if self.moveCount < self.maxtries:
+                        score = tempboard.makeMove(piece, row, col)
+                        if score > 0:  # legal move
+                            move = (piece, row, col)
+                            newhi = 0
+                            self.moveCount += 1
+                            if self.moveCount == self.maxtries:
+                                return hiscore, bestmove
+                            rempieces = [p for p in pieces if p != piece]  # todo: move up after first for
+                            if rempieces:      # more pieces remain
+                                newhi, moves = self.getBestMoves(tempboard, rempieces)
 
-                        if newhi > hiscore:
-                            # print("hiscore:{} maxpaths:{} curr move: {}".format(newhi, maxPaths, move))
-                            hiscore = newhi
-                            bestmove = [move] + moves
-
+                            else:   # no more pieces
+                                for p in Piece.getPieces():
+                                    newhi += len(tempboard.findRoomForPiece(p))
+                            if newhi > hiscore:
+                                hiscore = newhi
+                                bestmove = [move] + moves
                         tempboard = copy.deepcopy(board)
 
         return hiscore, bestmove
@@ -144,15 +150,15 @@ class BrutePlayer(Player):
         move = None
         if not self.cachedMoves:
             self.moveCount = 0
-            hiscore, self.cachedMoves = self.getBestMove(board, pieces)
-            print("Path={} hiscore={} totalmoves={}".format(self.cachedMoves, hiscore, self.moveCount))
+            hiscore, self.cachedMoves = self.getBestMoves(board, pieces)
 
         if self.cachedMoves:
             move = self.cachedMoves.pop(0)
             piece,row,col = move
 
-            print("Moving piece {} to {},{}. Press Enter to continue...".
-                        format(piece, row + 1, col + 1))
+            main.hor()
+            print("Move #{}: {} to {},{}.".
+                        format(board.moves, piece, row + 1, col + 1))
         else:
             print("GAME OVER")
 
