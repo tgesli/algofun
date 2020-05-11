@@ -1,38 +1,76 @@
 import random
 import numpy as np
+import math
+
 
 class Piece:
 
+    __piece_str = [ '.', '..', '...', '....', '.....',
+                    './.', '././.', './././.', '././././.',
+                    '. / .', ' ./. ', '.  / . /  .', '  ./ . /.  ',
+                    '../..', '../. ', '../ .', '. /..', ' ./..',
+                    '.../ . ', ' . /...', '. /../. ', ' ./../ .',
+                    '.../ . / . ', ' . / . /...', '.  /.../.  ', '  ./.../  .',
+                    '.  /.  /...', '  ./  ./...', '.../.  /.  ', '.../  ./  .',
+                    ' ../.. ', '.. / ..', '. /../ .', ' ./../. ',
+                    '. ./...', '.../. .', '../. /..', '../ ./..']
     pieces = {}
 
-    __pieces = ['.', '..', '...', '....', '.....',
-                './.', '././.', './././.', '././././.',
-                '. / .', ' ./. ', '.  / . /  .', '  ./ . /.  ',
-                '../..', '../. ', '../ .', '. /..', ' ./..',
-                '.../ . ', ' . /...', '. /../. ', ' ./../ .',
-                '.../ . / . ', ' . / . /...', '.  /.../.  ', '  ./.../  .',
-                '.  /.  /...', '  ./  ./...', '.../.  /.  ', '.../  ./  .',
-                ' ../.. ', '.. / ..', '. /../ .', ' ./../. ',
-                '. ./...', '.../. .', '../. /..', '../ ./..']
+    @staticmethod
+    def init_pieces():
+        for p in Piece.__piece_str:
+            Piece.pieces[p] = Piece(p)
+
 
     @staticmethod
     def getRandomPiece():
-        if not Piece.pieces:
-            for p in Piece.__pieces:
-                Piece.pieces[p] = Piece(p)
         return random.choice(list(Piece.pieces.values()))
+
+
+    @staticmethod
+    def bits2ints(mat):
+        buf = []
+        for r in mat:
+            v = 0
+            for c in r:
+                v <<= 1
+                if c:
+                    v += 1
+            buf.append(v)
+        return buf
+
+    @staticmethod
+    def int2bits(n, b=0):
+        bits = []
+        d = 0
+        while n:
+            bits.insert(0, bool(n % 2))
+            n >>= 1
+            d += 1
+
+        if b:
+            for i in range(b-d):      # always return 9 bits
+                bits.insert(0, False)
+
+        return bits
+
+    @staticmethod
+    def mat2str(p):
+        nBits = int(math.log(max(p), 2)) + 1
+        mat = [Piece.int2bits(n, nBits) for n in p]
+        buf = ''
+        delim = ''
+        for r in mat:
+            row = ''.join(['.' if c else ' ' for c in r])
+            buf += delim + row
+            delim = '/'
+        return buf
 
 
     def __init__(self, str):
 
-        if not Piece.pieces:
-            Piece.pieces['dummy'] = 'dummy'
-            for p in Piece.__pieces:
-                Piece.pieces[p] = Piece(p)
-            del Piece.pieces['dummy']
-
         if not str:
-            str = random.choice(self.__pieces)
+            str = random.choice(self.__piece_str)
 
         self.str = str
         rows = str.split('/')
@@ -46,11 +84,13 @@ class Piece:
         self.points = np.count_nonzero(self.bmat)
 
 
-    def __repr__(self):
-        return "<Piece {}>".format(self.str)
+    def numList(self):
+        return Piece.bits2ints(self.bmat)
+
 
     def __str__(self):
         return "<Piece {}>".format(self.str)
+
 
     def draw(self, id=None):
         if id is None:
@@ -78,4 +118,3 @@ class Piece:
     @staticmethod
     def getPieces():
         return list(Piece.pieces.values())
-
