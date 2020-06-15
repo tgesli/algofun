@@ -9,26 +9,27 @@ def main():
 
     board = Board()
     gameOver = False
-    player = players.LRPlayer()
+    player = players.SmartPlayer()
     score = 0
     start = datetime.now()
 
     file = open("data/bloku.{0:%Y-%m-%d_%H:%M:%S}.json".format(start), "w")
-    pieces = []
+    plist = []
+    Piece.initPieces()
 
     while not gameOver:
         buf = {}
         buf["b"] = board.numList()
 
-        if not pieces:
-            pieces = [Piece.getRandomPiece() for _ in range(3)]
+        if not plist:
+            plist = [Piece.getRandomPiece() for _ in range(3)]
 
-        buf["p"] = [p.numList() for p in pieces]
+        buf["p"] = [p.numList() for p in plist]
 
         mList = []
         sList = []
 
-        moves  = player.getMoves(board, pieces)
+        moves  = player.getMoves(board, plist)
         if moves:
             for move in moves:
                 if move is None:
@@ -36,7 +37,7 @@ def main():
                 else:
                     (p, r, c) = move
                     s = board.makeMove(p, r, c)
-                    pieces.remove(p)
+                    plist.remove(p)
                     score += s
                     mList.append((p.numList(), r, c))
                     sList.append(s)

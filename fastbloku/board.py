@@ -1,6 +1,10 @@
 from datetime import datetime
+import random
+
 from pieces import Piece
 import numpy as np
+import copy
+
 
 
 def read_theta():
@@ -14,12 +18,13 @@ class Board:
     NBOXES = 9
     BOXSIZE = 3
     MASK = np.array(9*[True])
-    sFile = open("data/bloku.{0:%Y-%m-%d_%H:%M:%S}.txt".format(datetime.now()), "w")
+    sFile = open("data/blokustates.{0:%Y-%m-%d_%H:%M:%S}.txt".format(datetime.now()), "w")
     outputSize = 0
     theta = read_theta()
 
     def __init__(self, blist=None):
         self.moveCount = 0
+        self.bonus = False
         if blist:
             for r in blist:
                 self.bmat = np.array([Piece.int2bits(r, self.BOARDSIZE) for r in blist])
@@ -40,64 +45,86 @@ class Board:
 
     def getClearedCells(self):
         cleared_cells = np.array(self.BOARDSIZE * [self.BOARDSIZE * [False]])
+        cleared_count = 0
         for i in range(self.BOARDSIZE):
             if np.count_nonzero(self.bmat[i, :]) == self.BOARDSIZE:
                 cleared_cells[i, :] = self.MASK
+                cleared_count += 1
             if np.count_nonzero(self.bmat[:, i]) == self.BOARDSIZE:
                 cleared_cells[:, i] = self.MASK
+                cleared_count += 1
             if np.count_nonzero(self.bmat[i//3*3:(i//3+1)*3, i%3*3:(i%3+1)*3]) == self.BOARDSIZE:
                 cleared_cells[i//3*3:(i//3+1)*3, i%3*3:(i%3+1)*3] =\
                     self.MASK.reshape(self.BOXSIZE, self.BOXSIZE)
-        return cleared_cells
+                cleared_count += 1
+        return cleared_cells, cleared_count
 
 
     def makeMove(self, piece:Piece, row:int, col:int):
         if not self.isLegalMove(piece, row, col):
             return -1
 
+        orig = np.array(self.bmat)
         self.placePiece(piece, row, col)
-        mask = self.getClearedCells()
+        mask, count = self.getClearedCells()
         self.bmat *= np.logical_not(mask)
         self.moveCount += 1
-        return piece.getPoints() + np.count_nonzero(mask)*2
+
+        points = np.count_nonzero(np.logical_not(orig) * self.bmat)
+        if count == 0:
+            self.bonus = False
+        else:
+            if self.bonus:
+                points += 9
+            self.bonus = True
+
+        points += count * (count + 1) * 9
+        return points
 
 
-    def findRoomForPiece(self, piece:Piece):
+    def findRoomForPiece(self, piece:Piece, limit:int = 0):
         positions = []
         h, w = piece.getSize()
         for r in range(self.BOARDSIZE - h + 1):
             for c in range(self.BOARDSIZE - w + 1):
                 if self.isLegalMove(piece, r, c):
                     positions.append((r, c))
+        if limit and len(positions)>limit:
+            positions = random.sample(positions, limit)
         return positions
 
 
     def __str__(self):
-        delim = ''
-        buf = ''
-        for n in self.numList():
-            buf += delim + str(n)
-            delim = ' '
-        return buf
+        return ' '.join(str(n) for n in self.numList())
 
 
-    def saveState(self, val):
-        buf = str(self) + ' ' + str(val) + '\n'
-        self.sFile.write(buf)
-        self.outputsize += 1
-        if self.outputsize % 1000 == 0:
+    def logState(self, val):
+        self.sFile.write(str(self) + ' ' + str(val) + '\n')
+        Board.outputSize += 1
+        if Board.outputSize % 1000 == 0:
             self.sFile.flush()
 
 
-    def getPositionValue(self):
+    def saveState(self):
+        self.tempMat = copy.deepcopy(self.bmat)
+        self.tempCount = self.moveCount
+
+
+    def restoreState(self):
+        self.bmat = copy.deepcopy(self.tempMat)
+        self.moveCount = self.tempCount
+
+
+    def getStateValue(self):
         val = 0
         for p in Piece.getPieces():
-            val += len(self.findRoomForPiece(p))
-        self.saveState(val)
+            rooms = self.findRoomForPiece(p)
+            val += len(rooms)
+        self.logState(val)
         return val
 
 
-    def predictPositionValue(self):
+    def predictStateValue(self):
         prediction = self.theta[0]
         ti = 1
         for r in self.bmat:
@@ -112,7 +139,7 @@ class Board:
     def draw(self):
 
         def picture(isFull):
-            return '[*]' if isFull else '   '
+            return '[.]' if isFull else '   '
 
         print('    1  2  3   4  5  6   7  8  9')
         for r in range(self.BOARDSIZE):

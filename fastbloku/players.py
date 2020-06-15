@@ -1,6 +1,7 @@
 from board import Board
 from pieces import Piece
 from typing import List, Tuple
+from itertools import permutations
 import copy
 import random
 
@@ -8,7 +9,7 @@ import random
 class Player:
 
     def getMoves(self, board:Board, pieces: List[Piece]):
-        pass
+        return [None]
 
 
 class HumanPlayer(Player):
@@ -83,9 +84,9 @@ class RulePlayer(Player):
 class BrutePlayer(Player):
 
     def __init__(self):
-        self.moveLimit = 0
+        self.moveLimit = 10
         self.cachedMoves = []
-        self.maxtries = 100
+        self.maxTries = 100
 
     def getBestMoves(self, board:Board, pieces:List[Piece]):
         tempBoard = copy.deepcopy(board)
@@ -116,7 +117,7 @@ class BrutePlayer(Player):
                         if newHi > hiScore:
                             hiScore = newHi
                             bestMove = [move] + moves
-                        if depth == 3 and self.moveLimit >= self.maxtries:
+                        if depth == 3 and self.moveLimit >= self.maxTries:
                             return hiScore, bestMove
                     tempBoard = copy.deepcopy(board)
 
@@ -131,59 +132,46 @@ class BrutePlayer(Player):
 
 class SmartPlayer(Player):
 
-    def __init__(self):
+    def __init__(self, sampleSize=0):
         self.cachedMoves = []
-        self.sampleSize = 20
+        self.sampleSize = sampleSize
         self.tmc = 0  # total moves considered
-
-    def getBestMoves(self, board:Board, pieces:List[Piece], indices: List[int]):
-        tempBoard = copy.deepcopy(board)
-        bestMove = []
-        moves = []
-        hiScore = 0
-
-        for idx in indices:
-            piece = pieces[idx]
-            remIndices = [i for i in indices if i != idx]
-            posList = tempBoard.findRoomForPiece(piece)
-
-            if len(posList) > self.sampleSize:
-                posList = random.sample(posList, self.sampleSize)
-
-            for row, col in posList:
-                tempBoard.makeMove(piece, row, col)
-
-                # print("{} {} P{}".format((4-len(indices)) * '--', self.tmc, idx))
-                move = (piece, row, col)
-                if remIndices:      # more pieces remain
-                    newHi, moves = self.getBestMoves(tempBoard, pieces, remIndices)
-                else:   # final move in series
-                    newHi = tempBoard.getPositionValue()
-                    self.tmc += 1
-
-                if newHi > hiScore:
-                    hiScore = newHi
-                    bestMove = [move] + moves
-
-                tempBoard = copy.deepcopy(board)
-
-        return hiScore, bestMove
 
 
     def getMoves(self, board:Board, pieces: List[Piece]):
-        self.moveLimit = 0
+        hiReward = 0
+        hiValue = 0
+        bestMoves = []
         self.tmc = 0
-        idx = [0, 1, 2]
-        _, self.cachedMoves = self.getBestMoves(board, pieces, idx)
-        print("TMC={}".format(self.tmc))
-        if len(self.cachedMoves)<3:
-            return None, None
-        return self.cachedMoves
+        for p0, p1, p2 in permutations(pieces):
+            for r0, c0 in board.findRoomForPiece(p0, self.sampleSize):
+                b0 = copy.deepcopy(board)
+                rew0 = b0.makeMove(p0, r0, c0)
+                for r1, c1 in b0.findRoomForPiece(p1, self.sampleSize):
+                    b1 = copy.deepcopy(b0)
+                    rew1 = b1.makeMove(p1, r1, c1)
+                    for r2, c2 in b1.findRoomForPiece(p2, self.sampleSize):
+                        b2 = copy.deepcopy(b1)
+                        rew2 = b2.makeMove(p2, r2, c2)
+                        self.tmc += 1
+                        reward = rew0 + rew1 + rew2
+                        if reward > hiReward:
+                            bestMoves = [ [p0, r0, c0], [p1, r1, c1], [p2, r2, c2] ]
+                            hiReward = reward
+                            hiValue = b2.getStateValue()
+                        elif reward == hiReward:
+                            value = b2.getStateValue()
+                            if value>hiValue:
+                                hiValue = value
+                                bestMoves = [[p0, r0, c0], [p1, r1, c1], [p2, r2, c2]]
+        if len(bestMoves) < 3:
+            bestMoves.append(None)
+
+        return bestMoves
 
 
 class LRPlayer(Player):
 
-
     def __init__(self):
         self.cachedMoves = []
         self.tmc = 0  # total moves considered
@@ -202,18 +190,16 @@ class LRPlayer(Player):
 
             for row, col in posList:
                 tempBoard.makeMove(piece, row, col)
-
-                # print("{} {} P{}".format((4-len(indices)) * '--', self.tmc, idx))
                 move = (piece, row, col)
                 if remIndices:      # more pieces remain
                     newHi, moves = self.getBestMoves(tempBoard, pieces, remIndices)
                 else:   # final move in series
-                    newHi = tempBoard.predictPositionValue()
+                    newHi = tempBoard.predictStateValue()
                     self.tmc += 1
 
                 if newHi > hiScore:
                     hiScore = newHi
-                    bestMove = [move] + moves
+                    bestMove = moves + [move]
 
                 tempBoard = copy.deepcopy(board)
 
@@ -225,10 +211,49 @@ class LRPlayer(Player):
         self.tmc = 0
         idx = [0, 1, 2]
         _, self.cachedMoves = self.getBestMoves(board, pieces, idx)
-        print("TMC={}".format(self.tmc))
-        board.saveState(self.tmc)
 
         if len(self.cachedMoves)<3:
             return None, None
         return self.cachedMoves
 
+
+class SmartLRPlayer(Player):
+    # TODO: DNRY - refactor these so that there aren't so much common code
+    #       in these classes
+
+    def __init__(self, sampleSize=0):
+        self.cachedMoves = []
+        self.sampleSize = sampleSize
+        self.tmc = 0  # total moves considered
+
+
+    def getMoves(self, board:Board, pieces: List[Piece]):
+        hiReward = 0
+        hiValue = 0
+        bestMoves = []
+        self.tmc = 0
+        for p0, p1, p2 in permutations(pieces):
+            for r0, c0 in board.findRoomForPiece(p0, self.sampleSize):
+                b0 = copy.deepcopy(board)
+                rew0 = b0.makeMove(p0, r0, c0)
+                for r1, c1 in b0.findRoomForPiece(p1, self.sampleSize):
+                    b1 = copy.deepcopy(b0)
+                    rew1 = b1.makeMove(p1, r1, c1)
+                    for r2, c2 in b1.findRoomForPiece(p2, self.sampleSize):
+                        b2 = copy.deepcopy(b1)
+                        rew2 = b2.makeMove(p2, r2, c2)
+                        self.tmc += 1
+                        reward = rew0 + rew1 + rew2
+                        if reward > hiReward:
+                            bestMoves = [ [p0, r0, c0], [p1, r1, c1], [p2, r2, c2] ]
+                            hiReward = reward
+                            hiValue = b2.predictStateValue()
+                        elif reward == hiReward:
+                            value = b2.predictStateValue()
+                            if value>hiValue:
+                                hiValue = value
+                                bestMoves = [[p0, r0, c0], [p1, r1, c1], [p2, r2, c2]]
+        if len(bestMoves) < 3:
+            bestMoves.append(None)
+
+        return bestMoves
