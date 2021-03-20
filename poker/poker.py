@@ -215,7 +215,8 @@ def formatCards(cards):
 def runTests():
     deck = pokerDeck()
     
-    # hand = [deck.nextCard() for _ in range(5)]
+    hand = [deck.nextCard() for _ in range(5)]
+    runTest(deck, hand)
     runTest(deck, parseCards("Ah Kh Qh Jh 9h"))
     runTest(deck, parseCards("7h 2h 3h 4h 5h"))
 
@@ -343,6 +344,6 @@ def runFileTest(fname):
                 
                 
 if __name__ == '__main__':
-    # runTests()
+    runTests()
     # runPerfTest7()
-    runFileTest('data/poker-hand-training.csv')
+    # runFileTest('data/poker-hand-training.csv')
